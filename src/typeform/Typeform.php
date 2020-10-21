@@ -20,7 +20,7 @@ class Typeform
      *
      * @var string
      */
-    protected $api_uri = 'https://api.typeform.com/v1/form/';
+    protected $api_uri = 'https://api.typeform.com/forms/';
 
     /**
      * form id
@@ -112,17 +112,22 @@ class Typeform
      */
     public function getForm($token)
     {
-        $params = [
-            'key'   => $this->getApiKey(),
-            'token' => $token
-        ];
+        $params = [$token];
+		$this->curl->setHeader('Authorization', 'Bearer ' . $this->getApiKey());
+        $this->curl->get($this->getUrlApi() . $token);
 
-        $data = $this->getHttpResponse($params);
+        if ($this->curl->error) {
+            throw new \Exception('The supplied API key is not valid');
+        }
+
+        $data = json_decode($this->curl->rawResponse, true);
+
+        if (is_null($data)) {
+            throw new \Exception('The supplied API key is not valid');
+        }
 
         return [
-            'stats'     => $data['stats']['responses'],
-            'questions' => $data['questions'],
-            'responses' => $data['responses'][0]
+            'fields'     => $data['fields'],
         ];
 
     }
@@ -136,7 +141,6 @@ class Typeform
         // Calculate offset
         $offset = $this->getPage() * $this->getLimit();
         $params = [
-            'key'       => $this->getApiKey(),
             'offset'    => $offset,
             'limit'     => $this->getLimit(),
             'completed' => $this->getCompleted()
@@ -148,7 +152,7 @@ class Typeform
         if ($this->getUntil()) {
             $params['until'] = $this->getUntil();
         }
-
+		$this->curl->setHeader('Authorization', 'Bearer ' . $this->getApiKey());
         $data = $this->getHttpResponse($params);
 
         $this->initializeForm($data);
